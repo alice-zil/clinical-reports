@@ -162,14 +162,11 @@ def evaluate_results(row_data):
         evals['CS_Color'] = "#7F8C8D"
         evals['CS_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή."
 
-    # --- ΥΠΟΛΟΓΙΣΜΟΣ HANDGRIP STRENGTH NORMS ---
+    # --- ΥΠΟΛΟΓΙΣΜΟΣ HANDGRIP STRENGTH NORMS (ΑΝΑ ΧΕΡΙ) ---
     g_l = to_float(row_data.get('Handgrip_L'))
     g_r = to_float(row_data.get('Handgrip_R'))
-    grips = [g for g in [g_l, g_r] if g is not None]
     
-    if grips and age is not None:
-        max_grip = max(grips)
-        
+    if (g_l is not None or g_r is not None) and age is not None:
         grip_norms = [
             ((10, 11), {'Male': (12.6, 22.4), 'Female': (11.8, 21.6)}),
             ((12, 13), {'Male': (19.4, 31.2), 'Female': (14.6, 24.4)}),
@@ -186,7 +183,8 @@ def evaluate_results(row_data):
             ((55, 59), {'Male': (30.7, 48.5), 'Female': (17.7, 31.5)}),
             ((60, 64), {'Male': (30.2, 48.0), 'Female': (17.2, 31.0)}),
             ((65, 69), {'Male': (28.2, 44.0), 'Female': (15.4, 27.2)}),
-            ((70, 99), {'Male': (21.3, 35.1), 'Female': (14.7, 24.5)})
+            ((70, 99), {'Male': (21.3, 35.1), 'Female': (14.7, 24.5)}),
+            ((100, 150), {'Male': (21.3, 35.1), 'Female': (14.7, 24.5)})
         ]
         
         selected_grip_norm = None
@@ -199,29 +197,45 @@ def evaluate_results(row_data):
         
         if selected_grip_norm:
             weak_val, strong_val = selected_grip_norm
+            statements = []
+            
+            # Αξιολόγηση Δεξιού Χεριού
+            if g_r is not None:
+                if g_r < weak_val:
+                    rel_r = "κάτω των φυσιολογικών ορίων"
+                elif g_r > strong_val:
+                    rel_r = "άνω των φυσιολογικών ορίων"
+                else:
+                    rel_r = "εντός των φυσιολογικών ορίων για το φύλο και την ηλικία σας"
+                statements.append(f"Η μέγιστη δύναμη λαβής για το δεξί χέρι ήταν <b>{g_r}</b> kg, τιμή που βρίσκεται {rel_r} ({age_label} ετών: {weak_val}-{strong_val} kg).")
+            
+            # Αξιολόγηση Αριστερού Χεριού
+            if g_l is not None:
+                if g_l < weak_val:
+                    rel_l = "κάτω των φυσιολογικών ορίων"
+                elif g_l > strong_val:
+                    rel_l = "άνω των φυσιολογικών ορίων"
+                else:
+                    rel_l = "εντός των φυσιολογικών ορίων για το φύλο και την ηλικία σας"
+                statements.append(f"Η μέγιστη δύναμη λαβής για το αριστερό χέρι ήταν <b>{g_l}</b> kg, τιμή που βρίσκεται {rel_l} ({age_label} ετών: {weak_val}-{strong_val} kg).")
+            
+            # Τελικό κείμενο παραγράφου
+            statements.append("Υψηλότερες τιμές υποδηλώνουν καλύτερη μυϊκή δύναμη, ενώ χαμηλότερες τιμές σχετίζονται με μειωμένη μυϊκή λειτουργία.")
+            evals['HandGrip_Statement'] = " ".join(statements)
+            
+            # Κρατάμε τη μέγιστη τιμή για το status του γενικού πίνακα στο τέλος
+            max_grip = max([g for g in [g_l, g_r] if g is not None])
             if max_grip < weak_val:
-                relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">κάτω</span>'
-                rating = "Αδύναμη"
-                color = "#C0392B"
+                evals['Grip_Eval'] = "Αδύναμη"
+                evals['Grip_Color'] = "#C0392B"
             elif max_grip > strong_val:
-                relation = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">πάνω</span>'
-                rating = "Ισχυρή"
-                color = "#27AE60"
+                evals['Grip_Eval'] = "Ισχυρή"
+                evals['Grip_Color'] = "#27AE60"
             else:
-                relation = '<span style="color: #2ECC71; font-family: \'Helvetica-Bold\';">εντός</span>'
-                rating = "Φυσιολογική"
-                color = "#2ECC71"
-                
-            evals['HandGrip_Statement'] = (
-                f"Η μέγιστη δύναμη λαβής ήταν <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{max_grip}</b> kg, "
-                f"τιμή που βρίσκεται {relation} των φυσιολογικών ορίων για το φύλο και την ηλικία σας "
-                f"(<span style=\"color: #C0392B; font-family: 'Helvetica-Bold';\">{age_label} ετών: {weak_val}-{strong_val} kg</span>). "
-                f"Υψηλότερες τιμές υποδηλώνουν καλύτερη μυϊκή δύναμη, ενώ χαμηλότερες τιμές σχετίζονται με μειωμένη "
-                f"μυϊκή λειτουργία."
-            )
-            evals['Grip_Eval'] = rating
-            evals['Grip_Color'] = color
-            evals['Grip_Comment'] = f"Εύρος αναφοράς: {weak_val}-{strong_val} kg."
+                evals['Grip_Eval'] = "Φυσιολογική"
+                evals['Grip_Color'] = "#2ECC71"
+            evals['Grip_Comment'] = f"Εύρος αναφοράς ηλικιακής ομάδας: {weak_val}-{strong_val} kg."
+            
         else:
             evals['HandGrip_Statement'] = "Δεν βρέθηκαν διαθέσιμα όρια αναφοράς για την ηλικία του εξεταζόμενου."
             evals['Grip_Eval'] = "Μη διαθέσιμο"
@@ -231,7 +245,7 @@ def evaluate_results(row_data):
         evals['HandGrip_Statement'] = "Δεν καταγράφηκε έγκυρη τιμή δυναμομέτρησης ή ηλικίας."
         evals['Grip_Eval'] = "Μη διαθέσιμο"
         evals['Grip_Color'] = "#7F8C8D"
-        evals['Grip_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή δυναμομέτρησης ή ηλικίας."
+        evals['Grip_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ BERG BALANCE SCALE (BBS) NORMS ---
     bbs = to_float(row_data.get('BergBalance'))
@@ -642,6 +656,7 @@ HTML_TEMPLATE = """
             border-radius: 3px;
             font-size: 8.5pt;
             text-align: center;
+            vertical-align: middle;
         }
         .explanation-text {
             font-size: 9pt;
@@ -695,7 +710,7 @@ HTML_TEMPLATE = """
             <td class="value">{Weight} kg  |  {Height} cm</td>
         </tr>
         <tr>
-            <td class="label">Δείκτης Μάζας Σώματος (BMI):</td>
+            <td class="label">Δείκτης Μάζας Σώματος (ΔΜΣ / BMI):</td>
             <td class="value"><b>{BMI}</b></td>
         </tr>
     </table>
