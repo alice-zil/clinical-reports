@@ -73,10 +73,21 @@ def evaluate_results(row_data):
     evals = {}
     
     def to_float(val):
+        if val is None:
+            return None
+        val_s = str(val).strip()
+        if val_s == '-' or val_s == '' or val_s.lower() == 'nan':
+            return None
         try:
-            return float(str(val).replace(',', '.'))
+            return float(val_s.replace(',', '.'))
         except ValueError:
             return None
+
+    def is_no_test(val):
+        if val is None:
+            return True
+        val_s = str(val).strip()
+        return val_s == '-' or val_s == '' or val_s.lower() == 'nan'
 
     age = to_float(row_data.get('Age'))
     gender = infer_gender(row_data.get('Name'))
@@ -110,7 +121,12 @@ def evaluate_results(row_data):
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ CHAIR STAND TEST NORMS ---
     reps = to_float(row_data.get('ChairStand'))
-    if reps is not None and age is not None:
+    if is_no_test(row_data.get('ChairStand')):
+        evals['ChairStand_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['CS_Eval'] = "-"
+        evals['CS_Color'] = "#7F8C8D"
+        evals['CS_Comment'] = "Δεν πραγματοποιήθηκε"
+    elif reps is not None and age is not None:
         norms_table = [
             ((60, 64), {'Male': (14, 19), 'Female': (12, 17)}),
             ((65, 69), {'Male': (12, 18), 'Female': (11, 16)}),
@@ -163,380 +179,445 @@ def evaluate_results(row_data):
         evals['CS_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ HANDGRIP STRENGTH NORMS (ΑΝΑ ΧΕΡΙ) ---
-    g_l = to_float(row_data.get('Handgrip_L'))
-    g_r = to_float(row_data.get('Handgrip_R'))
-    
-    if (g_l is not None or g_r is not None) and age is not None:
-        grip_norms = [
-            ((10, 11), {'Male': (12.6, 22.4), 'Female': (11.8, 21.6)}),
-            ((12, 13), {'Male': (19.4, 31.2), 'Female': (14.6, 24.4)}),
-            ((14, 15), {'Male': (28.5, 44.3), 'Female': (15.5, 27.3)}),
-            ((16, 17), {'Male': (32.6, 52.4), 'Female': (17.2, 29.0)}),
-            ((18, 19), {'Male': (35.7, 55.5), 'Female': (19.2, 31.0)}),
-            ((20, 24), {'Male': (36.8, 56.6), 'Female': (21.5, 35.3)}),
-            ((25, 29), {'Male': (37.7, 57.5), 'Female': (25.6, 41.4)}),
-            ((30, 34), {'Male': (36.0, 55.8), 'Female': (21.5, 35.3)}),
-            ((35, 39), {'Male': (35.8, 55.6), 'Female': (20.3, 34.1)}),
-            ((40, 44), {'Male': (35.5, 55.3), 'Female': (18.9, 32.7)}),
-            ((45, 49), {'Male': (34.7, 54.5), 'Female': (18.6, 32.4)}),
-            ((50, 54), {'Male': (32.9, 50.7), 'Female': (18.1, 31.9)}),
-            ((55, 59), {'Male': (30.7, 48.5), 'Female': (17.7, 31.5)}),
-            ((60, 64), {'Male': (30.2, 48.0), 'Female': (17.2, 31.0)}),
-            ((65, 69), {'Male': (28.2, 44.0), 'Female': (15.4, 27.2)}),
-            ((70, 99), {'Male': (21.3, 35.1), 'Female': (14.7, 24.5)}),
-            ((100, 150), {'Male': (21.3, 35.1), 'Female': (14.7, 24.5)})
-        ]
-        
-        selected_grip_norm = None
-        age_label = ""
-        for (age_range, gender_norms) in grip_norms:
-            if age_range[0] <= age <= age_range[1]:
-                selected_grip_norm = gender_norms.get(gender)
-                age_label = f"{age_range[0]}-{age_range[1]}"
-                break
-        
-        if selected_grip_norm:
-            weak_val, strong_val = selected_grip_norm
-            statements = []
+    raw_gl = row_data.get('Handgrip_L')
+    raw_gr = row_data.get('Handgrip_R')
+    if is_no_test(raw_gl) and is_no_test(raw_gr):
+        evals['HandGrip_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['Grip_Eval'] = "-"
+        evals['Grip_Color'] = "#7F8C8D"
+        evals['Grip_Comment'] = "Δεν πραγματοποιήθηκε"
+    else:
+        g_l = to_float(raw_gl)
+        g_r = to_float(raw_gr)
+        if (g_l is not None or g_r is not None) and age is not None:
+            grip_norms = [
+                ((10, 11), {'Male': (12.6, 22.4), 'Female': (11.8, 21.6)}),
+                ((12, 13), {'Male': (19.4, 31.2), 'Female': (14.6, 24.4)}),
+                ((14, 15), {'Male': (28.5, 44.3), 'Female': (15.5, 27.3)}),
+                ((16, 17), {'Male': (32.6, 52.4), 'Female': (17.2, 29.0)}),
+                ((18, 19), {'Male': (35.7, 55.5), 'Female': (19.2, 31.0)}),
+                ((20, 24), {'Male': (36.8, 56.6), 'Female': (21.5, 35.3)}),
+                ((25, 29), {'Male': (37.7, 57.5), 'Female': (25.6, 41.4)}),
+                ((30, 34), {'Male': (36.0, 55.8), 'Female': (21.5, 35.3)}),
+                ((35, 39), {'Male': (35.8, 55.6), 'Female': (20.3, 34.1)}),
+                ((40, 44), {'Male': (35.5, 55.3), 'Female': (18.9, 32.7)}),
+                ((45, 49), {'Male': (34.7, 54.5), 'Female': (18.6, 32.4)}),
+                ((50, 54), {'Male': (32.9, 50.7), 'Female': (18.1, 31.9)}),
+                ((55, 59), {'Male': (30.7, 48.5), 'Female': (17.7, 31.5)}),
+                ((60, 64), {'Male': (30.2, 48.0), 'Female': (17.2, 31.0)}),
+                ((65, 69), {'Male': (28.2, 44.0), 'Female': (15.4, 27.2)}),
+                ((70, 99), {'Male': (21.3, 35.1), 'Female': (14.7, 24.5)}),
+                ((100, 150), {'Male': (21.3, 35.1), 'Female': (14.7, 24.5)})
+            ]
             
-            # Αξιολόγηση Δεξιού Χεριού
-            if g_r is not None:
-                if g_r < weak_val:
-                    rel_r = "κάτω των φυσιολογικών ορίων"
-                elif g_r > strong_val:
-                    rel_r = "άνω των φυσιολογικών ορίων"
+            selected_grip_norm = None
+            age_label = ""
+            for (age_range, gender_norms) in grip_norms:
+                if age_range[0] <= age <= age_range[1]:
+                    selected_grip_norm = gender_norms.get(gender)
+                    age_label = f"{age_range[0]}-{age_range[1]}"
+                    break
+            
+            if selected_grip_norm:
+                weak_val, strong_val = selected_grip_norm
+                statements = []
+                
+                # Αξιολόγηση Δεξιού Χεριού
+                if g_r is not None:
+                    if g_r < weak_val:
+                        rel_r = "κάτω των φυσιολογικών ορίων"
+                    elif g_r > strong_val:
+                        rel_r = "άνω των φυσιολογικών ορίων"
+                    else:
+                        rel_r = "εντός των φυσιολογικών ορίων για το φύλο και την ηλικία σας"
+                    statements.append(f"Η μέγιστη δύναμη λαβής για το δεξί χέρι ήταν <b>{g_r}</b> kg, τιμή που βρίσκεται {rel_r} ({age_label} ετών: {weak_val}-{strong_val} kg).")
+                
+                # Αξιολόγηση Αριστερού Χεριού
+                if g_l is not None:
+                    if g_l < weak_val:
+                        rel_l = "κάτω των φυσιολογικών ορίων"
+                    elif g_l > strong_val:
+                        rel_l = "άνω των φυσιολογικών ορίων"
+                    else:
+                        rel_l = "εντός των φυσιολογικών ορίων για το φύλο και την ηλικία σας"
+                    statements.append(f"Η μέγιστη δύναμη λαβής για το αριστερό χέρι ήταν <b>{g_l}</b> kg, τιμή που βρίσκεται {rel_l} ({age_label} ετών: {weak_val}-{strong_val} kg).")
+                
+                # Τελικό κείμενο παραγράφου
+                statements.append("Υψηλότερες τιμές υποδηλώνουν καλύτερη μυϊκή δύναμη, ενώ χαμηλότερες τιμές σχετίζονται με μειωμένη μυϊκή λειτουργία.")
+                evals['HandGrip_Statement'] = " ".join(statements)
+                
+                # Κρατάμε τη μέγιστη τιμή για το status του γενικού πίνακα στο τέλος
+                max_grip = max([g for g in [g_l, g_r] if g is not None])
+                if max_grip < weak_val:
+                    evals['Grip_Eval'] = "Αδύναμη"
+                    evals['Grip_Color'] = "#C0392B"
+                elif max_grip > strong_val:
+                    evals['Grip_Eval'] = "Ισχυρή"
+                    evals['Grip_Color'] = "#27AE60"
                 else:
-                    rel_r = "εντός των φυσιολογικών ορίων για το φύλο και την ηλικία σας"
-                statements.append(f"Η μέγιστη δύναμη λαβής για το δεξί χέρι ήταν <b>{g_r}</b> kg, τιμή που βρίσκεται {rel_r} ({age_label} ετών: {weak_val}-{strong_val} kg).")
-            
-            # Αξιολόγηση Αριστερού Χεριού
-            if g_l is not None:
-                if g_l < weak_val:
-                    rel_l = "κάτω των φυσιολογικών ορίων"
-                elif g_l > strong_val:
-                    rel_l = "άνω των φυσιολογικών ορίων"
-                else:
-                    rel_l = "εντός των φυσιολογικών ορίων για το φύλο και την ηλικία σας"
-                statements.append(f"Η μέγιστη δύναμη λαβής για το αριστερό χέρι ήταν <b>{g_l}</b> kg, τιμή που βρίσκεται {rel_l} ({age_label} ετών: {weak_val}-{strong_val} kg).")
-            
-            # Τελικό κείμενο παραγράφου
-            statements.append("Υψηλότερες τιμές υποδηλώνουν καλύτερη μυϊκή δύναμη, ενώ χαμηλότερες τιμές σχετίζονται με μειωμένη μυϊκή λειτουργία.")
-            evals['HandGrip_Statement'] = " ".join(statements)
-            
-            # Κρατάμε τη μέγιστη τιμή για το status του γενικού πίνακα στο τέλος
-            max_grip = max([g for g in [g_l, g_r] if g is not None])
-            if max_grip < weak_val:
-                evals['Grip_Eval'] = "Αδύναμη"
-                evals['Grip_Color'] = "#C0392B"
-            elif max_grip > strong_val:
-                evals['Grip_Eval'] = "Ισχυρή"
-                evals['Grip_Color'] = "#27AE60"
+                    evals['Grip_Eval'] = "Φυσιολογική"
+                    evals['Grip_Color'] = "#2ECC71"
+                evals['Grip_Comment'] = f"Εύρος αναφοράς ηλικιακής ομάδας: {weak_val}-{strong_val} kg."
+                
             else:
-                evals['Grip_Eval'] = "Φυσιολογική"
-                evals['Grip_Color'] = "#2ECC71"
-            evals['Grip_Comment'] = f"Εύρος αναφοράς ηλικιακής ομάδας: {weak_val}-{strong_val} kg."
-            
+                evals['HandGrip_Statement'] = "Δεν βρέθηκαν διαθέσιμα όρια αναφοράς για την ηλικία του εξεταζόμενου."
+                evals['Grip_Eval'] = "Μη διαθέσιμο"
+                evals['Grip_Color'] = "#7F8C8D"
+                evals['Grip_Comment'] = "Η ηλικία είναι εκτός ορίων."
         else:
-            evals['HandGrip_Statement'] = "Δεν βρέθηκαν διαθέσιμα όρια αναφοράς για την ηλικία του εξεταζόμενου."
+            evals['HandGrip_Statement'] = "Δεν καταγράφηκε έγκυρη τιμή δυναμομέτρησης ή ηλικίας."
             evals['Grip_Eval'] = "Μη διαθέσιμο"
             evals['Grip_Color'] = "#7F8C8D"
-            evals['Grip_Comment'] = "Η ηλικία είναι εκτός ορίων."
-    else:
-        evals['HandGrip_Statement'] = "Δεν καταγράφηκε έγκυρη τιμή δυναμομέτρησης ή ηλικίας."
-        evals['Grip_Eval'] = "Μη διαθέσιμο"
-        evals['Grip_Color'] = "#7F8C8D"
-        evals['Grip_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή."
+            evals['Grip_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ BERG BALANCE SCALE (BBS) NORMS ---
-    bbs = to_float(row_data.get('BergBalance'))
-    if bbs is not None:
-        if bbs >= 41:
-            rating = "Χαμηλός Κίνδυνος"
-            color = "#27AE60"
-            relation_text = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">χαμηλό</span>'
-            comment = "Η στατική και δυναμική ισορροπία κρίνεται ικανοποιητική."
-        elif bbs >= 21:
-            rating = "Μέτριος Κίνδυνος"
-            color = "#F39C12"
-            relation_text = '<span style="color: #F39C12; font-family: \'Helvetica-Bold\';">μέτριο</span>'
-            comment = "Υπάρχει ήπια αστάθεια. Προτείνεται εστιασμένο πρόγραμμα ενδυνάμωσης."
-        else:
-            rating = "Υψηλός Κίνδυνος"
-            color = "#C0392B"
-            relation_text = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">υψηλό</span>'
-            comment = "Σημαντική αστάθεια. Συνιστάται στενή επίβλεψη."
-            
-        evals['BBS_Statement'] = (
-            f"Συγκεντρώσατε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(bbs)}</b>/56 βαθμούς, "
-            f"αποτέλεσμα που αντιστοιχεί σε {relation_text} κίνδυνο πτώσης."
-        )
-        evals['BBS_Eval'] = rating
-        evals['BBS_Color'] = color
-        evals['BBS_Comment'] = comment
+    if is_no_test(row_data.get('BergBalance')):
+        evals['BBS_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['BBS_Eval'] = "-"
+        evals['BBS_Color'] = "#7F8C8D"
+        evals['BBS_Comment'] = "Δεν πραγματοποιήθηκε"
     else:
-        evals['BBS_Statement'] = "Δεν καταγράφηκε έγκυρη βαθμολογία για το Berg Balance Scale."
+        bbs = to_float(row_data.get('BergBalance'))
+        if bbs is not None:
+            if bbs >= 41:
+                rating = "Χαμηλός Κίνδυνος"
+                color = "#27AE60"
+                relation_text = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">χαμηλό</span>'
+                comment = "Η στατική και δυναμική ισορροπία κρίνεται ικανοποιητική."
+            elif bbs >= 21:
+                rating = "Μέτριος Κίνδυνος"
+                color = "#F39C12"
+                relation_text = '<span style="color: #F39C12; font-family: \'Helvetica-Bold\';">μέτριο</span>'
+                comment = "Υπάρχει ήπια αστάθεια. Προτείνεται εστιασμένο πρόγραμμα ενδυνάμωσης."
+            else:
+                rating = "Υψηλός Κίνδυνος"
+                color = "#C0392B"
+                relation_text = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">υψηλό</span>'
+                comment = "Σημαντική αστάθεια. Συνιστάται στενή επίβλεψη."
+                
+            evals['BBS_Statement'] = (
+                f"Συγκεντρώσατε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(bbs)}</b>/56 βαθμούς, "
+                f"αποτέλεσμα που αντιστοιχεί σε {relation_text} κίνδυνο πτώσης."
+            )
+            evals['BBS_Eval'] = rating
+            evals['BBS_Color'] = color
+            evals['BBS_Comment'] = comment
+        else:
+            evals['BBS_Statement'] = "Δεν καταγράφηκε έγκυρη βαθμολογία για το Berg Balance Scale."
+            evals['BBS_Eval'] = "Μη διαθέσιμο"
+            evals['BBS_Color'] = "#7F8C8D"
+            evals['BBS_Comment'] = "Δεν καταγράφηκε τιμή."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ TINETTI NORMS ---
-    tinetti = to_float(row_data.get('Tinetti'))
-    if tinetti is not None:
-        if tinetti >= 25:
-            rating = "Χαμηλός Κίνδυνος"
-            color = "#27AE60"
-            relation_text = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">χαμηλό</span>'
-            comment = "Πολύ καλή ανταπόκριση στις δοκιμασίες στατικής και δυναμικής ισορροπίας."
-        elif tinetti >= 19:
-            rating = "Μέτριος Κίνδυνος"
-            color = "#F39C12"
-            relation_text = '<span style="color: #F39C12; font-family: \'Helvetica-Bold\';">μέτριο</span>'
-            comment = "Μέτρια κινητικότητα. Χρήζει ενίσχυσης μέσω στοχευμένης φυσικοθεραπείας."
-        else:
-            rating = "Υψηλός Κίνδυνος"
-            color = "#C0392B"
-            relation_text = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">υψηλό</span>'
-            comment = "Σημαντικό έλλειμμα σε ισορροπία και βάδιση. Απαιτείται αυξημένη προσοχή."
-            
-        evals['Tinetti_Statement'] = (
-            f"Συγκεντρώσατε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(tinetti)}</b>/28 βαθμούς, "
-            f"αποτέλεσμα που αντιστοιχεί σε {relation_text} κίνδυνο πτώσης."
-        )
-        evals['Tinetti_Eval'] = rating
-        evals['Tinetti_Color'] = color
-        evals['Tinetti_Comment'] = comment
+    if is_no_test(row_data.get('Tinetti')):
+        evals['Tinetti_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['Tinetti_Eval'] = "-"
+        evals['Tinetti_Color'] = "#7F8C8D"
+        evals['Tinetti_Comment'] = "Δεν πραγματοποιήθηκε"
     else:
-        evals['Tinetti_Statement'] = "Δεν καταγράφηκε έγκυρη βαθμολογία για το Tinetti Test."
+        tinetti = to_float(row_data.get('Tinetti'))
+        if tinetti is not None:
+            if tinetti >= 25:
+                rating = "Χαμηλός Κίνδυνος"
+                color = "#27AE60"
+                relation_text = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">χαμηλό</span>'
+                comment = "Πολύ καλή ανταπόκριση στις δοκιμασίες στατικής και δυναμικής ισορροπίας."
+            elif tinetti >= 19:
+                rating = "Μέτριος Κίνδυνος"
+                color = "#F39C12"
+                relation_text = '<span style="color: #F39C12; font-family: \'Helvetica-Bold\';">μέτριο</span>'
+                comment = "Μέτρια κινητικότητα. Χρήζει ενίσχυσης μέσω στοχευμένης φυσικοθεραπείας."
+            else:
+                rating = "Υψηλός Κίνδυνος"
+                color = "#C0392B"
+                relation_text = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">υψηλό</span>'
+                comment = "Σημαντικό έλλειμμα σε ισορροπία και βάδιση. Απαιτείται αυξημένη προσοχή."
+                
+            evals['Tinetti_Statement'] = (
+                f"Συγκεντρώσατε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(tinetti)}</b>/28 βαθμούς, "
+                f"αποτέλεσμα που αντιστοιχεί σε {relation_text} κίνδυνο πτώσης."
+            )
+            evals['Tinetti_Eval'] = rating
+            evals['Tinetti_Color'] = color
+            evals['Tinetti_Comment'] = comment
+        else:
+            evals['Tinetti_Statement'] = "Δεν καταγράφηκε έγκυρη βαθμολογία για το Tinetti Test."
+            evals['Tinetti_Eval'] = "Μη διαθέσιμο"
+            evals['Tinetti_Color'] = "#7F8C8D"
+            evals['Tinetti_Comment'] = "Δεν καταγράφηκε τιμή."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ 6-MINUTE WALK TEST (6MWT) NORMS ---
-    walk_dist = to_float(row_data.get('SixMinWalk'))
-    if walk_dist is not None and age is not None and weight is not None and height is not None:
-        if gender == 'Male':
-            predicted_dist = (7.57 * height) - (5.02 * age) - (1.76 * weight) - 309
-        else:
-            predicted_dist = (2.11 * height) - (2.29 * age) - (5.78 * weight) + 667
-            
-        evals['Walk_Statement'] = (
-            f"Διανύσατε μια συνολική απόσταση <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(walk_dist)}</b> μέτρων, "
-            f"η αναμενόμενη απόσταση βάσει των χαρακτηριστικών σας είναι <b style=\"font-family: 'Helvetica-Bold'; color: #1a5276;\">{predicted_dist:.1f} μέτρα (Enright & Sherill (1988))</b>."
-        )
-        evals['Walk_Eval'] = f"{int(walk_dist)} μέτρα"
-        evals['Walk_Color'] = "#1a5276"
-        evals['Walk_Comment'] = f"Αναμενόμενη απόσταση βάσει εξίσωσης: {predicted_dist:.1f} μέτρα."
-    else:
-        evals['Walk_Statement'] = "Δεν καταγράφηκαν επαρκή δεδομένα (απόσταση, βάρος, ύψος) για τον υπολογισμό του 6MWT."
-        evals['Walk_Eval'] = "Μη διαθέσιμο"
+    if is_no_test(row_data.get('SixMinWalk')):
+        evals['Walk_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['Walk_Eval'] = "-"
         evals['Walk_Color'] = "#7F8C8D"
-        evals['Walk_Comment'] = "Ελλιπή στοιχεία σωματομετρίας."
+        evals['Walk_Comment'] = "Δεν πραγματοποιήθηκε"
+    else:
+        walk_dist = to_float(row_data.get('SixMinWalk'))
+        if walk_dist is not None and age is not None and weight is not None and height is not None:
+            if gender == 'Male':
+                predicted_dist = (7.57 * height) - (5.02 * age) - (1.76 * weight) - 309
+            else:
+                predicted_dist = (2.11 * height) - (2.29 * age) - (5.78 * weight) + 667
+                
+            evals['Walk_Statement'] = (
+                f"Διανύσατε μια συνολική απόσταση <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(walk_dist)}</b> μέτρων, "
+                f"η αναμενόμενη απόσταση βάσει των χαρακτηριστικών σας είναι <b style=\"font-family: 'Helvetica-Bold'; color: #1a5276;\">{predicted_dist:.1f} μέτρα (Enright & Sherill (1988))</b>."
+            )
+            evals['Walk_Eval'] = f"{int(walk_dist)} μέτρα"
+            evals['Walk_Color'] = "#1a5276"
+            evals['Walk_Comment'] = f"Αναμενόμενη απόσταση βάσει εξίσωσης: {predicted_dist:.1f} μέτρα."
+        else:
+            evals['Walk_Statement'] = "Δεν καταγράφηκαν επαρκή δεδομένα (απόσταση, βάρος, ύψος) για τον υπολογισμό του 6MWT."
+            evals['Walk_Eval'] = "Μη διαθέσιμο"
+            evals['Walk_Color'] = "#7F8C8D"
+            evals['Walk_Comment'] = "Ελλιπή στοιχεία σωματομετρίας."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ SINGLE LEG STANCE NORMS ---
-    sl_l = to_float(row_data.get('SingleLeg_L'))
-    sl_r = to_float(row_data.get('SingleLeg_R'))
-    
-    if sl_l is not None and sl_r is not None:
-        def get_sls_rating(sec):
-            if sec > 50: return "εξαιρετική"
-            elif 40 <= sec <= 50: return "καλή"
-            elif 25 <= sec <= 39: return "μέτρια (μέσος όρος)"
-            elif 10 <= sec <= 24: return "μέτρια"
-            else: return "φτωχή"
-            
-        rating_r = get_sls_rating(sl_r)
-        rating_l = get_sls_rating(sl_l)
-        
-        evals['SLS_Statement'] = (
-            f"Διατηρήσατε τη θέση μονοποδικής στήριξης για <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{sl_r}</b> δευτερόλεπτα στο δεξί πόδι "
-            f"και για <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{sl_l}</b> δευτερόλεπτα στο αριστερό πόδι, αποτέλεσμα που υποδηλώνει "
-            f"<span style=\"font-family: 'Helvetica-Bold';\">{rating_r}</span> στατική ισορροπία του δεξιού ποδιού και "
-            f"<span style=\"font-family: 'Helvetica-Bold';\">{rating_l}</span> στατική ισορροπία στο αριστερό πόδι."
-        )
-        
-        if sl_r <= 24 or sl_l <= 24:
-            evals['SLS_Eval'] = "Μειωμένη"
-            evals['SLS_Color'] = "#C0392B"
-        else:
-            evals['SLS_Eval'] = "Ικανοποιητική"
-            evals['SLS_Color'] = "#27AE60"
-        evals['SLS_Comment'] = f"Δεξί: {rating_r} | Αριστερό: {rating_l}."
-    else:
-        evals['SLS_Statement'] = "Δεν καταγράφηκαν έγκυρες μετρήσεις χρόνου για τη δοκιμασία Single Leg Stance."
-        evals['SLS_Eval'] = "Μη διαθέσιμο"
+    raw_sll = row_data.get('SingleLeg_L')
+    raw_slr = row_data.get('SingleLeg_R')
+    if is_no_test(raw_sll) and is_no_test(raw_slr):
+        evals['SLS_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['SLS_Eval'] = "-"
         evals['SLS_Color'] = "#7F8C8D"
-        evals['SLS_Comment'] = "Ελλιπή δεδομένα."
+        evals['SLS_Comment'] = "Δεν πραγματοποιήθηκε"
+    else:
+        sl_l = to_float(raw_sll)
+        sl_r = to_float(raw_slr)
+        if sl_l is not None and sl_r is not None:
+            def get_sls_rating(sec):
+                if sec > 50: return "εξαιρετική"
+                elif 40 <= sec <= 50: return "καλή"
+                elif 25 <= sec <= 39: return "μέτρια (μέσος όρος)"
+                elif 10 <= sec <= 24: return "μέτρια"
+                else: return "φτωχή"
+                
+            rating_r = get_sls_rating(sl_r)
+            rating_l = get_sls_rating(sl_l)
+            
+            evals['SLS_Statement'] = (
+                f"Διατηρήσατε τη θέση μονοποδικής στήριξης για <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{sl_r}</b> δευτερόλεπτα στο δεξί πόδι "
+                f"και για <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{sl_l}</b> δευτερόλεπτα στο αριστερό πόδι, αποτέλεσμα που υποδηλώνει "
+                f"<span style=\"font-family: 'Helvetica-Bold';\">{rating_r}</span> στατική ισορροπία του δεξιού ποδιού και "
+                f"<span style=\"font-family: 'Helvetica-Bold';\">{rating_l}</span> στατική ισορροπία στο αριστερό πόδι."
+            )
+            
+            if sl_r <= 24 or sl_l <= 24:
+                evals['SLS_Eval'] = "Μειωμένη"
+                evals['SLS_Color'] = "#C0392B"
+            else:
+                evals['SLS_Eval'] = "Ικανοποιητική"
+                evals['SLS_Color'] = "#27AE60"
+            evals['SLS_Comment'] = f"Δεξί: {rating_r} | Αριστερό: {rating_l}."
+        else:
+            evals['SLS_Statement'] = "Δεν καταγράφηκαν έγκυρες μετρήσεις χρόνου για τη δοκιμασία Single Leg Stance."
+            evals['SLS_Eval'] = "Μη διαθέσιμο"
+            evals['SLS_Color'] = "#7F8C8D"
+            evals['SLS_Comment'] = "Ελλιπή δεδομένα."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ 3-METER BACKWARDS WALK TEST NORMS ---
-    bw_t1 = to_float(row_data.get('ThreeMBackwards_T1'))
-    bw_t2 = to_float(row_data.get('ThreeMBackwards_T2'))
-    bw_times = [t for t in [bw_t1, bw_t2] if t is not None]
-    
-    if bw_times:
-        avg_bw = sum(bw_times) / len(bw_times)
-        if avg_bw <= 3.0:
-            bw_relation = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">χαμηλή</span>'
-            evals['MBWT_Eval'] = "Χαμηλός Κίνδυνος"
-            evals['MBWT_Color'] = "#27AE60"
-        else:
-            bw_relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">αυξημένη</span>'
-            evals['MBWT_Eval'] = "Αυξημένος Κίνδυνος"
-            evals['MBWT_Color'] = "#C0392B"
-            
-        evals['MBWT_Statement'] = (
-            f"Εσείς ολοκληρώσατε τη δοκιμασία με μέσο χρόνο <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{avg_bw:.2f}</b> δευτερόλεπτα, "
-            f"αυτό το αποτέλεσμα υποδηλώνει {bw_relation} πιθανότητα εμφάνισης πτώσεων."
-        )
-        evals['MBWT_Comment'] = f"Μέσος χρόνος οπισθοπορείας: {avg_bw:.2f}s (Όριο: <=3.0s)."
-    else:
-        evals['MBWT_Statement'] = "Δεν καταγράφηκε έγκυρος χρόνος για τη δοκιμασία 3-Meter Backwards Walk Test."
-        evals['MBWT_Eval'] = "Μη διαθέσιμο"
+    raw_bw1 = row_data.get('ThreeMBackwards_T1')
+    raw_bw2 = row_data.get('ThreeMBackwards_T2')
+    if is_no_test(raw_bw1) and is_no_test(raw_bw2):
+        evals['MBWT_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['MBWT_Eval'] = "-"
         evals['MBWT_Color'] = "#7F8C8D"
-        evals['MBWT_Comment'] = "Δεν καταγράφηκε χρόνος."
+        evals['MBWT_Comment'] = "Δεν πραγματοποιήθηκε"
+    else:
+        bw_t1 = to_float(raw_bw1)
+        bw_t2 = to_float(raw_bw2)
+        bw_times = [t for t in [bw_t1, bw_t2] if t is not None]
+        
+        if bw_times:
+            avg_bw = sum(bw_times) / len(bw_times)
+            if avg_bw <= 3.0:
+                bw_relation = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">χαμηλή</span>'
+                evals['MBWT_Eval'] = "Χαμηλός Κίνδυνος"
+                evals['MBWT_Color'] = "#27AE60"
+            else:
+                bw_relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">αυξημένη</span>'
+                evals['MBWT_Eval'] = "Αυξημένος Κίνδυνος"
+                evals['MBWT_Color'] = "#C0392B"
+                
+            evals['MBWT_Statement'] = (
+                f"Εσείς ολοκληρώσατε τη δοκιμασία με μέσο χρόνο <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{avg_bw:.2f}</b> δευτερόλεπτα, "
+                f"αυτό το αποτέλεσμα υποδηλώνει {bw_relation} πιθανότητα εμφάνισης πτώσεων."
+            )
+            evals['MBWT_Comment'] = f"Μέσος χρόνος οπισθοπορείας: {avg_bw:.2f}s (Όριο: <=3.0s)."
+        else:
+            evals['MBWT_Statement'] = "Δεν καταγράφηκε έγκυρος χρόνος για τη δοκιμασία 3-Meter Backwards Walk Test."
+            evals['MBWT_Eval'] = "Μη διαθέσιμο"
+            evals['MBWT_Color'] = "#7F8C8D"
+            evals['MBWT_Comment'] = "Δεν καταγράφηκε χρόνος."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ SHORT PHYSICAL PERFORMANCE BATTERY (SPPB) NORMS ---
-    sppb = to_float(row_data.get('SPPB'))
-    if sppb is not None:
-        if sppb >= 10:
-            rating = "Υψηλή"
-            color = "#27AE60"
-            perf_text = "υψηλή"
-            risk_text = "χαμηλό κίνδυνο"
-            frailty_text = "απουσία"
-        elif sppb >= 7:
-            rating = "Μέτρια"
-            color = "#F39C12"
-            perf_text = "μέτρια"
-            risk_text = "αυξημένη πιθανότητα"
-            frailty_text = "παρουσία"
-        elif sppb >= 4:
-            rating = "Χαμηλή"
-            color = "#D35400"
-            perf_text = "χαμηλή"
-            risk_text = "αυξημένη πιθανότητα"
-            frailty_text = "παρουσία"
-        else:
-            rating = "Σοβαρά Μειωμένη"
-            color = "#C0392B"
-            perf_text = "σοβαρά μειωμένη"
-            risk_text = "αυξημένη πιθανότητα"
-            frailty_text = "παρουσία"
-            
-        evals['SPPB_Statement'] = (
-            f"Συγκεντρώσατε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(sppb)}</b>/12 βαθμούς, "
-            f"αποτέλεσμα που υποδηλώνει <span style=\"font-family: 'Helvetica-Bold';\">{perf_text}</span> λειτουργική απόδοση με "
-            f"<span style=\"font-family: 'Helvetica-Bold';\">{risk_text}</span> λειτουργικής έκπτωσης, και {frailty_text} ευπάθειας."
-        )
-        evals['SPPB_Eval'] = rating
-        evals['SPPB_Color'] = color
-        evals['SPPB_Comment'] = f"Συνολικό σκορ SPPB: {int(sppb)}/12."
-    else:
-        evals['SPPB_Statement'] = "Δεν καταγράφηκε έγκυρη βαθμολογία για το SPPB Test."
-        evals['SPPB_Eval'] = "Μη διαθέσιμο"
+    if is_no_test(row_data.get('SPPB')):
+        evals['SPPB_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['SPPB_Eval'] = "-"
         evals['SPPB_Color'] = "#7F8C8D"
-        evals['SPPB_Comment'] = "Δεν πραγματοποιήθηκε η μέτρηση."
+        evals['SPPB_Comment'] = "Δεν πραγματοποιήθηκε"
+    else:
+        sppb = to_float(row_data.get('SPPB'))
+        if sppb is not None:
+            if sppb >= 10:
+                rating = "Υψηλή"
+                color = "#27AE60"
+                perf_text = "υψηλή"
+                risk_text = "χαμηλό κίνδυνο"
+                frailty_text = "απουσία"
+            elif sppb >= 7:
+                rating = "Μέτρια"
+                color = "#F39C12"
+                perf_text = "μέτρια"
+                risk_text = "αυξημένη πιθανότητα"
+                frailty_text = "παρουσία"
+            elif sppb >= 4:
+                rating = "Χαμηλή"
+                color = "#D35400"
+                perf_text = "χαμηλή"
+                risk_text = "αυξημένη πιθανότητα"
+                frailty_text = "παρουσία"
+            else:
+                rating = "Σοβαρά Μειωμένη"
+                color = "#C0392B"
+                perf_text = "σοβαρά μειωμένη"
+                risk_text = "αυξημένη πιθανότητα"
+                frailty_text = "παρουσία"
+                
+            evals['SPPB_Statement'] = (
+                f"Συγκεντρώσατε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{int(sppb)}</b>/12 βαθμούς, "
+                f"αποτέλεσμα που υποδηλώνει <span style=\"font-family: 'Helvetica-Bold';\">{perf_text}</span> λειτουργική απόδοση με "
+                f"<span style=\"font-family: 'Helvetica-Bold';\">{risk_text}</span> λειτουργικής έκπτωσης, και {frailty_text} ευπάθειας."
+            )
+            evals['SPPB_Eval'] = rating
+            evals['SPPB_Color'] = color
+            evals['SPPB_Comment'] = f"Συνολικό σκορ SPPB: {int(sppb)}/12."
+        else:
+            evals['SPPB_Statement'] = "Δεν καταγράφηκε έγκυρη βαθμολογία για το SPPB Test."
+            evals['SPPB_Eval'] = "Μη διαθέσιμο"
+            evals['SPPB_Color'] = "#7F8C8D"
+            evals['SPPB_Comment'] = "Δεν πραγματοποιήθηκε η μέτρηση."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ 10-METER WALK TEST (10MWT) NORMS ---
-    v_self = to_float(row_data.get('TenMWalk_AvgVel_Self'))
-    v_fast = to_float(row_data.get('TenMWalk_AvgVel_Fast'))
-    
-    if v_self is not None and v_fast is not None and age is not None:
-        m_norms = {
-            29: {'Male': 1.358, 'Female': 1.341},
-            39: {'Male': 1.433, 'Female': 1.337},
-            49: {'Male': 1.434, 'Female': 1.390},
-            59: {'Male': 1.433, 'Female': 1.313},
-            69: {'Male': 1.339, 'Female': 1.241},
-            79: {'Male': 1.262, 'Female': 1.132},
-            150: {'Male': 0.968, 'Female': 0.943}
-        }
-        
-        ref_norm = None
-        for max_a, n_vals in sorted(m_norms.items()):
-            if age <= max_a:
-                ref_norm = n_vals.get(gender)
-                break
-                
-        if ref_norm:
-            rel_comfort = "εντός ή άνω των" if v_self >= ref_norm * 0.95 else "κάτω των"
-            
-            evals['10MWT_Statement'] = (
-                f"Η αυτοεπιλεγόμενη ταχύτητα βάδισής σας ήταν <b style=\"font-family: 'Helvetica-Bold'; color: #1a5276;\">{v_self:.2f} m/s</b> "
-                f"(υγιής τιμή αναφοράς ηλικιακής ομάδας: {ref_norm:.3f} m/s), η οποία κρίνεται ως <b>{rel_comfort}</b> φυσιολογικών ορίων."
-            )
-            
-            if v_self >= ref_norm * 0.95:
-                evals['10MWT_Eval'] = "Φυσιολογική"
-                evals['10MWT_Color'] = "#27AE60"
-            else:
-                evals['10MWT_Eval'] = "Μειωμένη"
-                evals['10MWT_Color'] = "#C0392B"
-            evals['10MWT_Comment'] = f"Ταχύτητα Άνετης Βάδισης: {v_self:.2f} m/s έναντι νόρμας {ref_norm:.3f} m/s."
-        else:
-            evals['10MWT_Statement'] = f"Καταγράφηκε αυτοεπιλεγόμενη ταχύτητα {v_self:.2f} m/s."
-            evals['10MWT_Eval'] = "Εντός Ορίων"
-            evals['10MWT_Color'] = "#2ECC71"
-            evals['10MWT_Comment'] = "Δεν προσδιορίστηκε ακριβής νόρμα."
-    else:
-        evals['10MWT_Statement'] = "Δεν καταγράφηκαν επαρκή δεδομένα ταχύτητας βάδισης (m/s) για το 10MWT."
-        evals['10MWT_Eval'] = "Μη διαθέσιμο"
+    raw_vself = row_data.get('TenMWalk_AvgVel_Self')
+    raw_vfast = row_data.get('TenMWalk_AvgVel_Fast')
+    if is_no_test(raw_vself) and is_no_test(raw_vfast):
+        evals['10MWT_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['10MWT_Eval'] = "-"
         evals['10MWT_Color'] = "#7F8C8D"
-        evals['10MWT_Comment'] = "Ελλιπείς μετρήσεις ταχύτητας."
+        evals['10MWT_Comment'] = "Δεν πραγματοποιήθηκε"
+    else:
+        v_self = to_float(raw_vself)
+        v_fast = to_float(raw_vfast)
+        if v_self is not None and v_fast is not None and age is not None:
+            m_norms = {
+                29: {'Male': 1.358, 'Female': 1.341},
+                39: {'Male': 1.433, 'Female': 1.337},
+                49: {'Male': 1.434, 'Female': 1.390},
+                59: {'Male': 1.433, 'Female': 1.313},
+                69: {'Male': 1.339, 'Female': 1.241},
+                79: {'Male': 1.262, 'Female': 1.132},
+                150: {'Male': 0.968, 'Female': 0.943}
+            }
+            
+            ref_norm = None
+            for max_a, n_vals in sorted(m_norms.items()):
+                if age <= max_a:
+                    ref_norm = n_vals.get(gender)
+                    break
+                    
+            if ref_norm:
+                rel_comfort = "εντός ή άνω των" if v_self >= ref_norm * 0.95 else "κάτω των"
+                
+                evals['10MWT_Statement'] = (
+                    f"Η αυτοεπιλεγόμενη ταχύτητα βάδισής σας ήταν <b style=\"font-family: 'Helvetica-Bold'; color: #1a5276;\">{v_self:.2f} m/s</b> "
+                    f"(υγιής τιμή αναφοράς ηλικιακής ομάδας: {ref_norm:.3f} m/s), η οποία κρίνεται ως <b>{rel_comfort}</b> φυσιολογικών ορίων."
+                )
+                
+                if v_self >= ref_norm * 0.95:
+                    evals['10MWT_Eval'] = "Φυσιολογική"
+                    evals['10MWT_Color'] = "#27AE60"
+                else:
+                    evals['10MWT_Eval'] = "Μειωμένη"
+                    evals['10MWT_Color'] = "#C0392B"
+                evals['10MWT_Comment'] = f"Ταχύτητα Άνετης Βάδισης: {v_self:.2f} m/s έναντι νόρμας {ref_norm:.3f} m/s."
+            else:
+                evals['10MWT_Statement'] = f"Καταγράφηκε αυτοεπιλεγόμενη ταχύτητα {v_self:.2f} m/s."
+                evals['10MWT_Eval'] = "Εντός Ορίων"
+                evals['10MWT_Color'] = "#2ECC71"
+                evals['10MWT_Comment'] = "Δεν προσδιορίστηκε ακριβής νόρμα."
+        else:
+            evals['10MWT_Statement'] = "Δεν καταγράφηκαν επαρκή δεδομένα ταχύτητας βάδισης (m/s) για το 10MWT."
+            evals['10MWT_Eval'] = "Μη διαθέσιμο"
+            evals['10MWT_Color'] = "#7F8C8D"
+            evals['10MWT_Comment'] = "Ελλιπείς μετρήσεις ταχύτητας."
 
     # --- ΥΠΟΛΟΓΙΣΜΟΣ TIMED UP AND GO (TUG) NORMS ---
-    tug1 = to_float(row_data.get('TUG_T1'))
-    tug2 = to_float(row_data.get('TUG_T2'))
-    tugs = [t for t in [tug1, tug2] if t is not None]
-    
-    if tugs and age is not None:
-        avg_tug = sum(tugs) / len(tugs)
-        
-        # Πίνακες αναφοράς TUG από τις εικόνες (Όρια για Average / Φυσιολογικό εύρος)
-        tug_norms_table = [
-            ((60, 64), {'Male': (3.8, 5.6), 'Female': (4.4, 6.0)}),
-            ((65, 69), {'Male': (4.3, 5.7), 'Female': (4.8, 6.4)}),
-            ((70, 74), {'Male': (4.2, 6.0), 'Female': (4.9, 7.1)}),
-            ((75, 79), {'Male': (4.6, 7.2), 'Female': (5.2, 7.4)}),
-            ((80, 84), {'Male': (5.2, 7.6), 'Female': (5.7, 8.7)}),
-            ((85, 89), {'Male': (5.3, 8.9), 'Female': (6.2, 9.6)}),
-            ((90, 150), {'Male': (6.2, 10.0), 'Female': (7.3, 11.5)})
-        ]
-        
-        selected_tug_norm = None
-        age_label = ""
-        for (age_range, gender_norms) in tug_norms_table:
-            if age_range[0] <= age <= age_range[1]:
-                selected_tug_norm = gender_norms.get(gender)
-                age_label = f"{age_range[0]}-{age_range[1]}"
-                break
-                
-        if selected_tug_norm:
-            low_t, high_t = selected_tug_norm
-            # Στο TUG ο μικρότερος χρόνος σημαίνει καλύτερη επίδοση (Above Average -> άνω)
-            if avg_tug < low_t:
-                relation = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">άνω</span>'
-                evals['TUG_Eval'] = "Άνω του μετρίου"
-                evals['TUG_Color'] = "#27AE60"
-            elif avg_tug > high_t:
-                relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">κάτω</span>'
-                evals['TUG_Eval'] = "Κάτω του μετρίου"
-                evals['TUG_Color'] = "#C0392B"
-            else:
-                relation = '<span style="color: #2ECC71; font-family: \'Helvetica-Bold\';">εντός</span>'
-                evals['TUG_Eval'] = "Φυσιολογική"
-                evals['TUG_Color'] = "#2ECC71"
-                
-            evals['TUG_Statement'] = (
-                f"Ολοκληρώσατε τη δοκιμασία σε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{avg_tug:.1f}</b> δευτερόλεπτα, "
-                f"επίδοση που βρίσκεται {relation} των φυσιολογικών τιμών αναφοράς "
-                f"(<span style=\"color: #C0392B; font-family: 'Helvetica-Bold';\">{age_label} ετών: {low_t:.1f}-{high_t:.1f} δευτερόλεπτα</span>) "
-                f"για την ηλικία και το φύλο σας."
-            )
-            evals['TUG_Comment'] = f"Φυσιολογικό εύρος ηλικιακής ομάδας: {low_t:.1f}-{high_t:.1f} δευτερόλεπτα."
-        else:
-            evals['TUG_Statement'] = "Η ηλικία του εξεταζόμενου βρίσκεται εκτός των διαθέσιμων ορίων αναφοράς (κάτω των 60 ετών)."
-            evals['TUG_Eval'] = "Εκτός Ορίων"
-            evals['TUG_Color'] = "#7F8C8D"
-            evals['TUG_Comment'] = "Η ηλικία είναι κάτω από 60 έτη."
-    else:
-        evals['TUG_Statement'] = "Δεν καταγράφηκε έγκυρος χρόνος ολοκλήρωσης ή ηλικία για το TUG."
-        evals['TUG_Eval'] = "Μη διαθέσιμο"
+    raw_tug1 = row_data.get('TUG_T1')
+    raw_tug2 = row_data.get('TUG_T2')
+    if is_no_test(raw_tug1) and is_no_test(raw_tug2):
+        evals['TUG_Statement'] = "Δεν πραγματοποιήθηκε."
+        evals['TUG_Eval'] = "-"
         evals['TUG_Color'] = "#7F8C8D"
-        evals['TUG_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή."
+        evals['TUG_Comment'] = "Δεν πραγματοποιήθηκε"
+    else:
+        tug1 = to_float(raw_tug1)
+        tug2 = to_float(raw_tug2)
+        tugs = [t for t in [tug1, tug2] if t is not None]
+        
+        if tugs and age is not None:
+            avg_tug = sum(tugs) / len(tugs)
+            
+            tug_norms_table = [
+                ((60, 64), {'Male': (3.8, 5.6), 'Female': (4.4, 6.0)}),
+                ((65, 69), {'Male': (4.3, 5.7), 'Female': (4.8, 6.4)}),
+                ((70, 74), {'Male': (4.2, 6.0), 'Female': (4.9, 7.1)}),
+                ((75, 79), {'Male': (4.6, 7.2), 'Female': (5.2, 7.4)}),
+                ((80, 84), {'Male': (5.2, 7.6), 'Female': (5.7, 8.7)}),
+                ((85, 89), {'Male': (5.3, 8.9), 'Female': (6.2, 9.6)}),
+                ((90, 150), {'Male': (6.2, 10.0), 'Female': (7.3, 11.5)})
+            ]
+            
+            selected_tug_norm = None
+            age_label = ""
+            for (age_range, gender_norms) in tug_norms_table:
+                if age_range[0] <= age <= age_range[1]:
+                    selected_tug_norm = gender_norms.get(gender)
+                    age_label = f"{age_range[0]}-{age_range[1]}"
+                    break
+                    
+            if selected_tug_norm:
+                low_t, high_t = selected_tug_norm
+                if avg_tug < low_t:
+                    relation = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">άνω</span>'
+                    evals['TUG_Eval'] = "Άνω του μετρίου"
+                    evals['TUG_Color'] = "#27AE60"
+                elif avg_tug > high_t:
+                    relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">κάτω</span>'
+                    evals['TUG_Eval'] = "Κάτω του μετρίου"
+                    evals['TUG_Color'] = "#C0392B"
+                else:
+                    relation = '<span style="color: #2ECC71; font-family: \'Helvetica-Bold\';">εντός</span>'
+                    evals['TUG_Eval'] = "Φυσιολογική"
+                    evals['TUG_Color'] = "#2ECC71"
+                    
+                evals['TUG_Statement'] = (
+                    f"Ολοκληρώσατε τη δοκιμασία σε <b style=\"font-family: 'Helvetica-Bold'; color: #C0392B;\">{avg_tug:.1f}</b> δευτερόλεπτα, "
+                    f"επίδοση που βρίσκεται {relation} των φυσιολογικών τιμών αναφοράς "
+                    f"(<span style=\"color: #C0392B; font-family: 'Helvetica-Bold';\">{age_label} ετών: {low_t:.1f}-{high_t:.1f} δευτερόλεπτα</span>) "
+                    f"για την ηλικία και το φύλο σας."
+                )
+                evals['TUG_Comment'] = f"Φυσιολογικό εύρος ηλικιακής ομάδας: {low_t:.1f}-{high_t:.1f} δευτερόλεπτα."
+            else:
+                evals['TUG_Statement'] = "Η ηλικία του εξεταζόμενου βρίσκεται εκτός των διαθέσιμων ορίων αναφοράς (κάτω των 60 ετών)."
+                evals['TUG_Eval'] = "Εκτός Ορίων"
+                evals['TUG_Color'] = "#7F8C8D"
+                evals['TUG_Comment'] = "Η ηλικία είναι κάτω από 60 έτη."
+        else:
+            evals['TUG_Statement'] = "Δεν καταγράφηκε έγκυρος χρόνος ολοκλήρωσης ή ηλικία για το TUG."
+            evals['TUG_Eval'] = "Μη διαθέσιμο"
+            evals['TUG_Color'] = "#7F8C8D"
+            evals['TUG_Comment'] = "Δεν καταγράφηκε έγκυρη τιμή."
 
     return evals
 
@@ -891,7 +972,7 @@ HTML_TEMPLATE = """
         {TUG_Statement}
     </div>
 
-    <!-- ΕΥΘΥΓΡΑΜΜΙΣΜΕΝΟΣ ΠΙΝΑΚΑΣ ΣΥΝΟΨΗΣ ΜΕ ΟΛΑ ΤΑ TEST -->
+    <!-- ΕΥΘΥΓΡΑΜΜΙΣΜΕΣΟΣ ΠΙΝΑΚΑΣ ΣΥΝΟΨΗΣ ΜΕ ΟΛΑ ΤΑ TEST -->
     <div class="sub-section-title" style="page-break-before: always;">Κλινικός Σχολιασμός & Αξιολόγηση με Νόρμες</div>
     <table class="grid-table">
         <thead>
@@ -997,9 +1078,7 @@ if uploaded_file is not None:
             "SingleLeg_L", "SingleLeg_R",
             "Handgrip_L", "Handgrip_R",
             "TenMWalk_AvgTime_Self", "TenMWalk_AvgTime_Fast",
-            "TenMWalk_AvgVel_Self", "TenMWalk_AvgVel_Fast",
-            "EmptyCol", "BrainHQ_Email", "BrainHQ_Password", "AQ_Index",
-            "Intervention_Start", "Intervention_End"
+            "TenMWalk_AvgVel_Self", "TenMWalk_AvgVel_Fast"
         ]
         
         if df_raw.shape[1] >= len(col_names):
@@ -1097,7 +1176,7 @@ if uploaded_file is not None:
                     row_data.update(evaluations)
                     
                     for k, v in row_data.items():
-                        if k not in evaluations and v.replace('.', '', 1).isdigit():
+                        if k not in evaluations and str(v).replace('.', '', 1).isdigit():
                             try:
                                 row_data[k] = f"{float(v):.2f}".rstrip('0').rstrip('.')
                             except ValueError:
