@@ -149,7 +149,7 @@ def evaluate_results(row_data):
             low_val, high_val = selected_norm
             if reps < low_val:
                 relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">κάτω</span>'
-                evals['CS_Eval'] = "Κάτω του μετρίου"
+                evals['CS_Eval'] = "Κάτω του εύρους"
                 evals['CS_Color'] = "#C0392B"
             elif reps > high_val:
                 relation = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">άνω</span>'
@@ -594,7 +594,7 @@ def evaluate_results(row_data):
                     evals['TUG_Color'] = "#27AE60"
                 elif avg_tug > high_t:
                     relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">κάτω</span>'
-                    evals['TUG_Eval'] = "Κάτω του μετρίου"
+                    evals['TUG_Eval'] = "Κάτω του εύρους"
                     evals['TUG_Color'] = "#C0392B"
                 else:
                     relation = '<span style="color: #2ECC71; font-family: \'Helvetica-Bold\';">εντός</span>'
