@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import zipfile
+import base64
 import io
 import os
 import re
@@ -55,6 +56,22 @@ else:
     st.error(f"⚠️ Τα αρχεία 'DejaVuSans.ttf' και 'DejaVuSans-Bold.ttf' πρέπει να βρίσκονται στον φάκελο: {BASE_DIR}")
     st.stop()
 
+def get_image_base64(filepath):
+    if os.path.exists(filepath):
+        with open(filepath, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("utf-8")
+            ext = os.path.splitext(filepath)[1].replace(".", "").lower()
+            if ext == "jpg":
+                ext = "jpeg"
+            return f"data:image/{ext};base64,{encoded}"
+    return ""
+
+# Φόρτωση των 2 λογοτύπων (π.χ. logo1.png και logo2.png στον ίδιο φάκελο)
+LOGO1_PATH = os.path.join(BASE_DIR, "logo1.png")
+LOGO2_PATH = os.path.join(BASE_DIR, "logo2.png")
+
+logo1_src = get_image_base64(LOGO1_PATH)
+logo2_src = get_image_base64(LOGO2_PATH)
 
 # --- ΒΟΗΘΗΤΙΚΟΣ ΑΛΓΟΡΙΘΜΟΣ ΑΝΙΧΝΕΥΣΗΣ ΦΥΛΟΥ ΑΠΟ ΤΟ ΟΝΟΜΑ ---
 def infer_gender(name):
@@ -149,7 +166,7 @@ def evaluate_results(row_data):
             low_val, high_val = selected_norm
             if reps < low_val:
                 relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">κάτω</span>'
-                evals['CS_Eval'] = "Κάτω του εύρους"
+                evals['CS_Eval'] = "Κάτω του μετρίου"
                 evals['CS_Color'] = "#C0392B"
             elif reps > high_val:
                 relation = '<span style="color: #27AE60; font-family: \'Helvetica-Bold\';">άνω</span>'
@@ -594,7 +611,7 @@ def evaluate_results(row_data):
                     evals['TUG_Color'] = "#27AE60"
                 elif avg_tug > high_t:
                     relation = '<span style="color: #C0392B; font-family: \'Helvetica-Bold\';">κάτω</span>'
-                    evals['TUG_Eval'] = "Κάτω του εύρους"
+                    evals['TUG_Eval'] = "Κάτω του μετρίου"
                     evals['TUG_Color'] = "#C0392B"
                 else:
                     relation = '<span style="color: #2ECC71; font-family: \'Helvetica-Bold\';">εντός</span>'
@@ -754,15 +771,25 @@ HTML_TEMPLATE = """
 <body>
 
     <div class="header">
-        <table class="header-table">
+        <table class="header-table" style="width: 100%; border-bottom: 3px solid #1a5276; margin-bottom: 20px; padding-bottom: 8px;">
             <tr>
-                <td align="left" style="vertical-align: bottom;">
-                    <div class="title">ΚΛΙΝΙΚΗ ΑΝΑΦΟΡΑ ΑΞΙΟΛΟΓΗΣΗΣ</div>
-                    <div class="subtitle">Πρόγραμμα Φυσικής & Γνωστικής Παρέμβασης (ACTIVE)</div>
+                <!-- Αριστερό Logo -->
+                <td style="width: 20%; vertical-align: middle; text-align: left;">
+                    {Logo1_Tag}
                 </td>
-                <td class="header-meta">
-                    <b>Ημερομηνία:</b> {Date}<br>
-                    <b>Φάση:</b> {Phase}
+                
+                <!-- Κεντρικός Τίτλος -->
+                <td style="width: 60%; vertical-align: middle; text-align: center;">
+                    <div class="title" style="font-size: 14pt; margin: 0; padding-bottom: 2px;">ΚΛΙΝΙΚΗ ΑΝΑΦΟΡΑ ΑΞΙΟΛΟΓΗΣΗΣ</div>
+                    <div class="subtitle" style="font-size: 9.5pt; margin: 0; padding-bottom: 4px;">Πρόγραμμα Φυσικής & Γνωστικής Παρέμβασης (ACTIVE)</div>
+                    <div style="font-size: 8.5pt; color: #566573;">
+                        <b>Ημερομηνία:</b> {Date} &nbsp;|&nbsp; <b>Φάση:</b> {Phase}
+                    </div>
+                </td>
+                
+                <!-- Δεξί Logo -->
+                <td style="width: 20%; vertical-align: middle; text-align: right;">
+                    {Logo2_Tag}
                 </td>
             </tr>
         </table>
@@ -1097,55 +1124,56 @@ if uploaded_file is not None:
         st.success(f"👥 Εντοπίστηκαν {len(cleaned_df)} ασθενείς προς επεξεργασία!")
 
         # --- ΜΕΝΟΥ ΕΠΙΛΟΓΗΣ ΑΣΘΕΝΩΝ ΜΕΣΩ ST.FORM ΓΙΑ ΑΜΕΣΗ ΑΝΤΑΠΟΚΡΙΣΗ ---
+        # --- ΜΕΝΟΥ ΕΠΙΛΟΓΗΣ ΑΣΘΕΝΩΝ ΧΩΡΙΣ ΦΟΡΜΑ ΓΙΑ ΑΜΕΣΗ ΑΝΤΑΠΟΚΡΙΣΗ ---
         st.subheader("👥 Επιλογή Ασθενών για Εξαγωγή")
-        st.caption("💡 Κάντε κλικ ελεύθερα και γρήγορα στα κουτάκια χωρίς καμία καθυστέρηση. Μόλις τελειώσετε, πατήστε «💾 Αποθήκευση Επιλογών».")
         
         # Αρχικοποίηση μόνιμου state για τις επιλογές ασθενών
         if "selected_patients" not in st.session_state:
             st.session_state.selected_patients = {row["Code"]: True for _, row in cleaned_df.iterrows()}
 
-        # Κουμπιά γρήγορης καθολικής αλλαγής (έξω από τη φόρμα για άμεσο reset)
+        for _, row in cleaned_df.iterrows():
+            if row["Code"] not in st.session_state.selected_patients:
+                st.session_state.selected_patients[row["Code"]] = True
+
+        # Κουμπιά γρήγορης καθολικής αλλαγής
         col_btn1, col_btn2, _ = st.columns([1.5, 1.5, 4])
         if col_btn1.button("✅ Επιλογή Όλων"):
-            st.session_state.selected_patients = {row["Code"]: True for _, row in cleaned_df.iterrows()}
+            for code in st.session_state.selected_patients:
+                st.session_state.selected_patients[code] = True
             st.rerun()
         if col_btn2.button("❌ Αποεπιλογή Όλων"):
-            st.session_state.selected_patients = {row["Code"]: False for _, row in cleaned_df.iterrows()}
+            for code in st.session_state.selected_patients:
+                st.session_state.selected_patients[code] = False
             st.rerun()
 
-        # Δημιουργία της Φόρμας (Form) για την αποφυγή των συνεχόμενων reloads
-        with st.form("patients_selection_form"):
-            display_df = cleaned_df[["AA", "Name", "Code", "Phase"]].copy()
-            display_df["Εξαγωγή"] = display_df["Code"].map(st.session_state.selected_patients)
+        display_df = cleaned_df[["AA", "Name", "Code", "Phase"]].copy()
+        display_df["Εξαγωγή"] = display_df["Code"].map(lambda c: st.session_state.selected_patients.get(c, True))
 
-            # Ο πίνακας τώρα είναι μέσα στη φόρμα και "ακούει" ακαριαία χωρίς lag
-            edited_df = st.data_editor(
-                display_df,
-                column_config={
-                    "Εξαγωγή": st.column_config.CheckboxColumn(
-                        "Εξαγωγή PDF;",
-                        help="Τσεκάρετε ποιοι ασθενείς θα συμπεριληφθούν",
-                        default=True,
-                    )
-                },
-                disabled=["AA", "Name", "Code", "Phase"],
-                hide_index=True,
-                width=700
-            )
-            
-            # Υποχρεωτικό κουμπί υποβολής της φόρμας
-            submit_selections = st.form_submit_button("💾 Αποθήκευση Επιλογών")
-            
-            if submit_selections:
-                for _, r in edited_df.iterrows():
-                    st.session_state.selected_patients[r["Code"]] = r["Εξαγωγή"]
-                st.rerun()
+        # Απευθείας επεξεργασία πίνακα (αποθηκεύεται αυτόματα με κάθε κλικ)
+        edited_df = st.data_editor(
+            display_df,
+            column_config={
+                "Εξαγωγή": st.column_config.CheckboxColumn(
+                    "Εξαγωγή PDF;",
+                    help="Τσεκάρετε ποιοι ασθενείς θα συμπεριληφθούν",
+                    default=True,
+                )
+            },
+            disabled=["AA", "Name", "Code", "Phase"],
+            hide_index=True,
+            width=700,
+            key="patient_editor"
+        )
+        
+        # Ενημέρωση του session_state αυτόματα από τις αλλαγές του editor
+        for _, r in edited_df.iterrows():
+            st.session_state.selected_patients[r["Code"]] = bool(r["Εξαγωγή"])
 
         # Φιλτράρισμα τελικού dataframe
         selected_codes = [code for code, sel in st.session_state.selected_patients.items() if sel]
         final_processing_df = cleaned_df[cleaned_df["Code"].isin(selected_codes)].copy()
 
-        st.info(f"🎯 Έχουν αποθηκευτεί και επιλεγεί **{len(final_processing_df)}** από τους **{len(cleaned_df)}** ασθενείς.")
+        st.info(f"🎯 Έχουν επιλεγεί **{len(final_processing_df)}** από τους **{len(cleaned_df)}** ασθενείς.")
 
         # --- ΔΗΜΙΟΥΡΓΙΑ PDF ---
         if st.button("🚀 Μετατροπή & Δημιουργία PDF"):
@@ -1174,6 +1202,10 @@ if uploaded_file is not None:
                                 val_str = val_str.split(" ")[0]
                             row_data[k] = val_str
                     row_data.update(evaluations)
+
+                    # Δημιουργία των <img> tags (εφόσον υπάρχουν οι εικόνες)
+                    row_data['Logo1_Tag'] = f'<img src="{logo1_src}" height="55">' if logo1_src else ''
+                    row_data['Logo2_Tag'] = f'<img src="{logo2_src}" height="55">' if logo2_src else ''
                     
                     for k, v in row_data.items():
                         if k not in evaluations and str(v).replace('.', '', 1).isdigit():
