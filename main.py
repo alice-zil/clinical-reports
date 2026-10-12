@@ -1196,7 +1196,7 @@ if uploaded_file is not None:
         st.info(f"🎯 Έχουν επιλεγεί **{len(final_processing_df)}** από τους **{len(cleaned_df)}** ασθενείς.")
         
         # --- ΔΗΜΙΟΥΡΓΙΑ PDF ---
-                if st.button("🚀 Μετατροπή & Δημιουργία PDF"):
+        if st.button("🚀 Μετατροπή & Δημιουργία PDF"):
             if len(final_processing_df) == 0:
                 st.error("⚠️ Πρέπει να επιλέξετε τουλάχιστον έναν ασθενή.")
                 st.stop()
