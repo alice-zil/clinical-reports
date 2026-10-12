@@ -1096,6 +1096,7 @@ if uploaded_file is not None:
             st.stop()
         
         cleaned_df = df_raw.iloc[start_row_idx:].copy()
+        cleaned_df = cleaned_df.reset_index(drop=True)  # <--- ΠΡΟΣΘΕΣΕ ΑΥΤΗ ΤΗ ΓΡΑΜΜΗ ΕΔΩ
         
         col_names = [
             "AA", "Name", "Code", "Phase", "Date", "Age", "EducationYears", "Weight", "Height", "BMI",
