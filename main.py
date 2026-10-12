@@ -1126,29 +1126,34 @@ if uploaded_file is not None:
 
         # --- ΜΕΝΟΥ ΕΠΙΛΟΓΗΣ ΑΣΘΕΝΩΝ ΜΕΣΩ ST.FORM ΓΙΑ ΑΜΕΣΗ ΑΝΤΑΠΟΚΡΙΣΗ ---
         # --- ΜΕΝΟΥ ΕΠΙΛΟΓΗΣ ΑΣΘΕΝΩΝ ΧΩΡΙΣ ΦΟΡΜΑ ΓΙΑ ΑΜΕΣΗ ΑΝΤΑΠΟΚΡΙΣΗ ---
+        # --- ΜΕΝΟΥ ΕΠΙΛΟΓΗΣ ΑΣΘΕΝΩΝ ---
         st.subheader("👥 Επιλογή Ασθενών για Εξαγωγή")
         
-        # Αρχικοποίηση μόνιμου state για τις επιλογές ασθενών
+        # Αρχικοποίηση μόνιμου state με βάση το 'AA' (1 έως 76)
         if "selected_patients" not in st.session_state:
-            st.session_state.selected_patients = {row["Code"]: True for _, row in cleaned_df.iterrows()}
+            st.session_state.selected_patients = {row["AA"]: True for _, row in cleaned_df.iterrows()}
 
         for _, row in cleaned_df.iterrows():
-            if row["Code"] not in st.session_state.selected_patients:
-                st.session_state.selected_patients[row["Code"]] = True
+            if row["AA"] not in st.session_state.selected_patients:
+                st.session_state.selected_patients[row["AA"]] = True
 
         # Κουμπιά γρήγορης καθολικής αλλαγής
         col_btn1, col_btn2, _ = st.columns([1.5, 1.5, 4])
         if col_btn1.button("✅ Επιλογή Όλων"):
-            for code in st.session_state.selected_patients:
-                st.session_state.selected_patients[code] = True
+            for aa in st.session_state.selected_patients:
+                st.session_state.selected_patients[aa] = True
+            if "patient_editor" in st.session_state:
+                del st.session_state["patient_editor"]
             st.rerun()
         if col_btn2.button("❌ Αποεπιλογή Όλων"):
-            for code in st.session_state.selected_patients:
-                st.session_state.selected_patients[code] = False
+            for aa in st.session_state.selected_patients:
+                st.session_state.selected_patients[aa] = False
+            if "patient_editor" in st.session_state:
+                del st.session_state["patient_editor"]
             st.rerun()
 
         display_df = cleaned_df[["AA", "Name", "Code", "Phase"]].copy()
-        display_df["Εξαγωγή"] = [st.session_state.selected_patients.get(row["Code"], True) for _, row in cleaned_df.iterrows()]
+        display_df["Εξαγωγή"] = display_df["AA"].map(lambda aa: st.session_state.selected_patients.get(aa, True))
 
         # Εμφάνιση του πίνακα
         edited_df = st.data_editor(
@@ -1166,16 +1171,15 @@ if uploaded_file is not None:
             key="patient_editor"
         )
         
-        # Ενημέρωση του session_state με βάση τις αλλαγές
-        # Ενημέρωση του session_state με βάση τις αλλαγές
+        # Ενημέρωση του session_state με βάση το AA
         for _, row in edited_df.iterrows():
-            st.session_state.selected_patients[row["Code"]] = bool(row["Εξαγωγή"])
+            st.session_state.selected_patients[row["AA"]] = bool(row["Εξαγωγή"])
 
-        # Φιλτράρισμα τελικού dataframe
-        selected_codes = [code for code, sel in st.session_state.selected_patients.items() if sel]
-        final_processing_df = cleaned_df[cleaned_df["Code"].isin(selected_codes)].copy()
+        # Φιλτράρισμα τελικού dataframe απευθείας από τα τσεκαρισμένα κουτάκια
+        final_processing_df = cleaned_df[edited_df["Εξαγωγή"].astype(bool).values].copy()
 
         st.info(f"🎯 Έχουν επιλεγεί **{len(final_processing_df)}** από τους **{len(cleaned_df)}** ασθενείς.")
+        
 
         # --- ΔΗΜΙΟΥΡΓΙΑ PDF ---
         if st.button("🚀 Μετατροπή & Δημιουργία PDF"):
