@@ -1149,7 +1149,7 @@ if uploaded_file is not None:
         display_df = cleaned_df[["AA", "Name", "Code", "Phase"]].copy()
         display_df["Εξαγωγή"] = display_df["Code"].map(lambda c: st.session_state.selected_patients.get(c, True))
 
-        # Απευθείας επεξεργασία πίνακα (αποθηκεύεται αυτόματα με κάθε κλικ)
+        # Εμφάνιση του πίνακα
         edited_df = st.data_editor(
             display_df,
             column_config={
@@ -1165,11 +1165,11 @@ if uploaded_file is not None:
             key="patient_editor"
         )
         
-        # Ενημέρωση του session_state αυτόματα από τις αλλαγές του editor
-        for _, r in edited_df.iterrows():
-            st.session_state.selected_patients[r["Code"]] = bool(r["Εξαγωγή"])
+        # Ενημέρωση του session_state με βάση το τι είναι τσεκαρισμένο στον editor
+        for idx, row in edited_df.iterrows():
+            st.session_state.selected_patients[row["Code"]] = bool(row["Εξαγωγή"])
 
-        # Φιλτράρισμα τελικού dataframe
+        # Δημιουργία τελικού dataframe με βάση τις τρέχουσες επιλογές
         selected_codes = [code for code, sel in st.session_state.selected_patients.items() if sel]
         final_processing_df = cleaned_df[cleaned_df["Code"].isin(selected_codes)].copy()
 
