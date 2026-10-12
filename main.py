@@ -1147,7 +1147,7 @@ if uploaded_file is not None:
             st.rerun()
 
         display_df = cleaned_df[["AA", "Name", "Code", "Phase"]].copy()
-        display_df["Εξαγωγή"] = display_df["Code"].map(lambda c: st.session_state.selected_patients.get(c, True))
+        display_df["Εξαγωγή"] = [st.session_state.selected_patients.get(row["Code"], True) for _, row in cleaned_df.iterrows()]
 
         # Εμφάνιση του πίνακα
         edited_df = st.data_editor(
@@ -1165,17 +1165,10 @@ if uploaded_file is not None:
             key="patient_editor"
         )
         
-        # Ενημέρωση του session_state και άμεσο rerun για να συγχρονιστούν οι μετρήσεις
-        state_changed = False
-        for idx, row in edited_df.iterrows():
-            code = row["Code"]
-            val = bool(row["Εξαγωγή"])
-            if st.session_state.selected_patients.get(code) != val:
-                st.session_state.selected_patients[code] = val
-                state_changed = True
-
-        if state_changed:
-            st.rerun()
+        # Ενημέρωση του session_state με βάση τις αλλαγές
+        for i, row in edited_df.iterrows():
+            code = cleaned_df.iloc[i]["Code"]
+            st.session_state.selected_patients[code] = bool(row["Εξαγωγή"])
 
         # Φιλτράρισμα τελικού dataframe
         selected_codes = [code for code, sel in st.session_state.selected_patients.items() if sel]
