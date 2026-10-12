@@ -1165,11 +1165,19 @@ if uploaded_file is not None:
             key="patient_editor"
         )
         
-        # Ενημέρωση του session_state με βάση το τι είναι τσεκαρισμένο στον editor
+        # Ενημέρωση του session_state και άμεσο rerun για να συγχρονιστούν οι μετρήσεις
+        state_changed = False
         for idx, row in edited_df.iterrows():
-            st.session_state.selected_patients[row["Code"]] = bool(row["Εξαγωγή"])
+            code = row["Code"]
+            val = bool(row["Εξαγωγή"])
+            if st.session_state.selected_patients.get(code) != val:
+                st.session_state.selected_patients[code] = val
+                state_changed = True
 
-        # Δημιουργία τελικού dataframe με βάση τις τρέχουσες επιλογές
+        if state_changed:
+            st.rerun()
+
+        # Φιλτράρισμα τελικού dataframe
         selected_codes = [code for code, sel in st.session_state.selected_patients.items() if sel]
         final_processing_df = cleaned_df[cleaned_df["Code"].isin(selected_codes)].copy()
 
