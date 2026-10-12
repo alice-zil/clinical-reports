@@ -56,15 +56,12 @@ else:
     st.error(f"⚠️ Τα αρχεία 'DejaVuSans.ttf' και 'DejaVuSans-Bold.ttf' πρέπει να βρίσκονται στον φάκελο: {BASE_DIR}")
     st.stop()
 
-def get_image_base64(filepath):
-    if os.path.exists(filepath):
-        with open(filepath, "rb") as f:
-            encoded = base64.b64encode(f.read()).decode("utf-8")
-            ext = os.path.splitext(filepath)[1].replace(".", "").lower()
-            if ext == "jpg":
-                ext = "jpeg"
-            return f"data:image/{ext};base64,{encoded}"
-    return ""
+# Βοηθητική συνάρτηση για να βρίσκει το xhtml2pdf τα αρχεία απευθείας χωρίς cache bug
+def link_callback(uri, rel):
+    s_path = os.path.join(BASE_DIR, uri)
+    if os.path.isfile(s_path):
+        return s_path
+    return uri
 
 # Φόρτωση των 2 λογοτύπων (π.χ. logo1.png και logo2.png στον ίδιο φάκελο)
 LOGO1_PATH = os.path.join(BASE_DIR, "logo1.png")
@@ -1210,8 +1207,8 @@ if uploaded_file is not None:
                     row_data.update(evaluations)
 
                     # Δημιουργία των <img> tags (εφόσον υπάρχουν οι εικόνες)
-                    row_data['Logo1_Tag'] = f'<img src="{logo1_src}" height="55">' if logo1_src else ''
-                    row_data['Logo2_Tag'] = f'<img src="{logo2_src}" height="55">' if logo2_src else ''
+                    row_data['Logo1_Tag'] = '<img src="logo1.png" height="55">' if os.path.exists(os.path.join(BASE_DIR, "logo1.png")) else ''
+                    row_data['Logo2_Tag'] = '<img src="logo2.png" height="55">' if os.path.exists(os.path.join(BASE_DIR, "logo2.png")) else ''
                     
                     for k, v in row_data.items():
                         if k not in evaluations and str(v).replace('.', '', 1).isdigit():
@@ -1226,7 +1223,7 @@ if uploaded_file is not None:
                         html_content = html_content.replace("{" + k + "}", str(v))
                     
                     pdf_io = io.BytesIO()
-                    pisa.CreatePDF(html_content, dest=pdf_io, encoding='utf-8')
+                    pisa.CreatePDF(html_content, dest=pdf_io, encoding='utf-8', link_callback=link_callback)
                     pdf_bytes = pdf_io.getvalue()
                     
                     latin_name = safe_greeklish(row_data['Name'])
