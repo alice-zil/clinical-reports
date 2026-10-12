@@ -1213,6 +1213,49 @@ if uploaded_file is not None:
                             row_data[k] = "-"
                         else:
                             val_str = str(v).strip()
+                            if k == "Date" and " " in val_str:
+                                val_str = val_str.split(" ")[0]
+                            row_data[k] = val_str
+                    row_data.update(evaluations)
+
+                    # Ανάγνωση των δύο ξεχωριστών αρχείων (όχι base64)
+                    row_data['Logo1_Tag'] = '<img src="logo1.png" height="55">' if os.path.exists(os.path.join(BASE_DIR, "logo1.png")) else ''
+                    row_data['Logo2_Tag'] = '<img src="logo2.png" height="55">' if os.path.exists(os.path.join(BASE_DIR, "logo2.png")) else ''
+                    
+                    for k, v in row_data.items():
+                        if k not in evaluations and k not in ['Logo1_Tag', 'Logo2_Tag'] and str(v).replace('.', '', 1).isdigit():
+                            try:
+                                row_data[k] = f"{float(v):.2f}".rstrip('0').rstrip('.')
+                            except ValueError:
+                                pass
+                    
+                    # --- ΕΔΩ ΟΡΙΖΕΤΑΙ ΤΟ html_content (ΠΟΥ ΕΙΧΕ ΣΒΗΣΤΕΙ) ---
+                    html_content = HTML_TEMPLATE
+                    for k, v in row_data.items():
+                        html_content = html_content.replace("{" + k + "}", str(v))
+                    
+                    pdf_io = io.BytesIO()
+                    # Χρήση path=BASE_DIR ώστε να διαβάζει τα logo1.png και logo2.png ως διαφορετικά αρχεία
+                    pisa.CreatePDF(html_content, dest=pdf_io, encoding='utf-8', path=BASE_DIR)
+                    pdf_bytes = pdf_io.getvalue()
+                    
+                    latin_name = safe_greeklish(row_data['Name'])
+                    latin_phase = safe_greeklish(row_data['Phase'])
+                    
+                    file_name = f"Reports/{latin_name}_{latin_phase}.pdf"
+                    
+                    zip_file.writestr(file_name, pdf_bytes)
+                    progress_bar.progress((index + 1) / len(final_processing_df))
+                    row_dict = row.to_dict()
+                    
+                    evaluations = evaluate_results(row_dict)
+                    
+                    row_data = {}
+                    for k, v in row_dict.items():
+                        if pd.isna(v):
+                            row_data[k] = "-"
+                        else:
+                            val_str = str(v).strip()
                             # Αν είναι η ημερομηνία και περιέχει ώρα (π.χ. 2025-09-24 00:00:00), κράτα μόνο την ημερομηνία
                             if k == "Date" and " " in val_str:
                                 val_str = val_str.split(" ")[0]
