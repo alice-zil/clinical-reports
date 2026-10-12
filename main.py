@@ -8,6 +8,7 @@ import re
 from xhtml2pdf import pisa
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import ImageReader
 
 # Set page style
 st.set_page_config(page_title="Κλινικές Αναφορές σε PDF", page_icon="📊", layout="centered")
@@ -57,11 +58,22 @@ else:
     st.stop()
 
 # Βοηθητική συνάρτηση για να βρίσκει το xhtml2pdf τα αρχεία απευθείας χωρίς cache bug
-def link_callback(uri, rel):
-    s_path = os.path.join(BASE_DIR, uri)
-    if os.path.isfile(s_path):
-        return s_path
-    return uri
+
+
+# Βρίσκουμε αυτόματα τα αρχεία στον φάκελο (ανεξάρτητα από πεζά/κεφαλαία στο Linux)
+def get_image_path(default_name, alt_keywords):
+    p = os.path.join(BASE_DIR, default_name)
+    if os.path.isfile(p):
+        return p
+    if os.path.exists(BASE_DIR):
+        for f in os.listdir(BASE_DIR):
+            f_low = f.lower()
+            if f_low == default_name.lower() or any(k.lower() in f_low for k in alt_keywords):
+                return os.path.join(BASE_DIR, f)
+    return p
+
+LOGO1_PATH = get_image_path("logo1.png", ["logo1", "logo_left"])
+LOGO2_PATH = get_image_path("logo2.png", ["logo2", "comfortage", "logo_right"])
 
 # Φόρτωση των 2 λογοτύπων (π.χ. logo1.png και logo2.png στον ίδιο φάκελο)
 
@@ -1173,7 +1185,12 @@ if uploaded_file is not None:
 
         st.info(f"🎯 Έχουν επιλεγεί **{len(final_processing_df)}** από τους **{len(cleaned_df)}** ασθενείς.")
         
+# Καθαρισμός μνήμης για να μην επαναλαμβάνεται η ίδια εικόνα
+        ImageReader._cache.clear()
 
+        pdf_io = io.BytesIO()
+        pisa.CreatePDF(html_content, dest=pdf_io, encoding='utf-8')
+        pdf_bytes = pdf_io.getvalue()
         # --- ΔΗΜΙΟΥΡΓΙΑ PDF ---
         if st.button("🚀 Μετατροπή & Δημιουργία PDF"):
             if len(final_processing_df) == 0:
@@ -1203,8 +1220,8 @@ if uploaded_file is not None:
                     row_data.update(evaluations)
 
                     # Δημιουργία των <img> tags (εφόσον υπάρχουν οι εικόνες)
-                    row_data['Logo1_Tag'] = '<img src="logo1.png" height="55">' if os.path.exists(os.path.join(BASE_DIR, "logo1.png")) else ''
-                    row_data['Logo2_Tag'] = '<img src="logo2.png" height="55">' if os.path.exists(os.path.join(BASE_DIR, "logo2.png")) else ''
+                    row_data['Logo1_Tag'] = f'<img src="{LOGO1_PATH}" height="55">' if os.path.exists(LOGO1_PATH) else ''
+                    row_data['Logo2_Tag'] = f'<img src="{LOGO2_PATH}" height="55">' if os.path.exists(LOGO2_PATH) else ''
                     
                     for k, v in row_data.items():
                         if k not in evaluations and str(v).replace('.', '', 1).isdigit():
