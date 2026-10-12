@@ -64,11 +64,7 @@ def link_callback(uri, rel):
     return uri
 
 # Φόρτωση των 2 λογοτύπων (π.χ. logo1.png και logo2.png στον ίδιο φάκελο)
-LOGO1_PATH = os.path.join(BASE_DIR, "logo1.png")
-LOGO2_PATH = os.path.join(BASE_DIR, "logo2.png")
 
-logo1_src = get_image_base64(LOGO1_PATH)
-logo2_src = get_image_base64(LOGO2_PATH)
 
 # --- ΒΟΗΘΗΤΙΚΟΣ ΑΛΓΟΡΙΘΜΟΣ ΑΝΙΧΝΕΥΣΗΣ ΦΥΛΟΥ ΑΠΟ ΤΟ ΟΝΟΜΑ ---
 def infer_gender(name):
