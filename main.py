@@ -1167,9 +1167,9 @@ if uploaded_file is not None:
         )
         
         # Ενημέρωση του session_state με βάση τις αλλαγές
-        for i, row in edited_df.iterrows():
-            code = cleaned_df.iloc[i]["Code"]
-            st.session_state.selected_patients[code] = bool(row["Εξαγωγή"])
+        # Ενημέρωση του session_state με βάση τις αλλαγές
+        for _, row in edited_df.iterrows():
+            st.session_state.selected_patients[row["Code"]] = bool(row["Εξαγωγή"])
 
         # Φιλτράρισμα τελικού dataframe
         selected_codes = [code for code, sel in st.session_state.selected_patients.items() if sel]
