@@ -72,8 +72,18 @@ def get_image_path(default_name, alt_keywords):
                 return os.path.join(BASE_DIR, f)
     return p
 
+def image_to_data_uri(path):
+    if not os.path.isfile(path):
+        return None
+    with open(path, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("utf-8")
+    return f"data:image/png;base64,{encoded}"
+
 LOGO1_PATH = get_image_path("logo1.png", ["logo1", "logo_left"])
 LOGO2_PATH = get_image_path("logo2.png", ["logo2", "comfortage", "logo_right"])
+
+LOGO1_URI = image_to_data_uri(LOGO1_PATH)
+LOGO2_URI = image_to_data_uri(LOGO2_PATH)
 
 # Φόρτωση των 2 λογοτύπων (π.χ. logo1.png και logo2.png στον ίδιο φάκελο)
 
@@ -1185,14 +1195,66 @@ if uploaded_file is not None:
 
         st.info(f"🎯 Έχουν επιλεγεί **{len(final_processing_df)}** από τους **{len(cleaned_df)}** ασθενείς.")
         
-# Καθαρισμός μνήμης για να μην επαναλαμβάνεται η ίδια εικόνα
-        ImageReader._cache.clear()
-
-        pdf_io = io.BytesIO()
-        pisa.CreatePDF(html_content, dest=pdf_io, encoding='utf-8')
-        pdf_bytes = pdf_io.getvalue()
         # --- ΔΗΜΙΟΥΡΓΙΑ PDF ---
-        if st.button("🚀 Μετατροπή & Δημιουργία PDF"):
+                if st.button("🚀 Μετατροπή & Δημιουργία PDF"):
+            if len(final_processing_df) == 0:
+                st.error("⚠️ Πρέπει να επιλέξετε τουλάχιστον έναν ασθενή.")
+                st.stop()
+
+            zip_buffer = io.BytesIO()
+
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                progress_bar = st.progress(0)
+
+                for index, (idx, row) in enumerate(final_processing_df.iterrows()):
+                    row_dict = row.to_dict()
+                    evaluations = evaluate_results(row_dict)
+
+                    row_data = {}
+                    for k, v in row_dict.items():
+                        if pd.isna(v):
+                            row_data[k] = "-"
+                        else:
+                            val_str = str(v).strip()
+                            if k == "Date" and " " in val_str:
+                                val_str = val_str.split(" ")[0]
+                            row_data[k] = val_str
+                    row_data.update(evaluations)
+
+                    # Λογότυπα ως base64 (αριστερά logo1, δεξιά logo2)
+                    row_data['Logo1_Tag'] = f'<img src="{LOGO1_URI}" height="55">' if LOGO1_URI else ''
+                    row_data['Logo2_Tag'] = f'<img src="{LOGO2_URI}" height="55">' if LOGO2_URI else ''
+
+                    for k, v in row_data.items():
+                        if k not in evaluations and k not in ['Logo1_Tag', 'Logo2_Tag'] and str(v).replace('.', '', 1).isdigit():
+                            try:
+                                row_data[k] = f"{float(v):.2f}".rstrip('0').rstrip('.')
+                            except ValueError:
+                                pass
+
+                    html_content = HTML_TEMPLATE
+                    for k, v in row_data.items():
+                        html_content = html_content.replace("{" + k + "}", str(v))
+
+                    pdf_io = io.BytesIO()
+                    pisa.CreatePDF(html_content, dest=pdf_io, encoding='utf-8')
+                    pdf_bytes = pdf_io.getvalue()
+
+                    latin_name = safe_greeklish(row_data['Name'])
+                    latin_phase = safe_greeklish(row_data['Phase'])
+                    file_name = f"Reports/{latin_name}_{latin_phase}.pdf"
+
+                    zip_file.writestr(file_name, pdf_bytes)
+                    progress_bar.progress((index + 1) / len(final_processing_df))
+
+            st.success("✅ Όλα τα PDF δημιουργήθηκαν με επιτυχία!")
+
+            st.download_button(
+                label="📥 Λήψη όλων των PDF (ZIP)",
+                data=zip_buffer.getvalue(),
+                file_name="Patient_Reports.zip",
+                mime="application/zip"
+            )
             if len(final_processing_df) == 0:
                 st.error("⚠️ Πρέπει να επιλέξετε τουλάχιστον έναν ασθενή και να πατήσετε 'Αποθήκευση Επιλογών' για να προχωρήσει η εξαγωγή.")
                 st.stop()
