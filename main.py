@@ -9,6 +9,7 @@ from xhtml2pdf import pisa
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.utils import ImageReader
+from PIL import Image
 
 # Set page style
 st.set_page_config(page_title="Κλινικές Αναφορές σε PDF", page_icon="📊", layout="centered")
@@ -72,22 +73,19 @@ def get_image_path(default_name, alt_keywords):
                 return os.path.join(BASE_DIR, f)
     return p
 
-def image_to_data_uri(path):
+def image_to_data_uri(path, fmt="PNG"):
     if not os.path.isfile(path):
         return None
-    with open(path, "rb") as f:
-        encoded = base64.b64encode(f.read()).decode("utf-8")
-    return f"data:image/png;base64,{encoded}"
+    img = Image.open(path).convert("RGB")
+    buf = io.BytesIO()
+    img.save(buf, format=fmt)
+    mime = "image/png" if fmt == "PNG" else "image/jpeg"
+    return f"data:{mime};base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
 
-LOGO1_PATH = get_image_path("logo1.png", ["logo1", "logo_left"])
-LOGO2_PATH = get_image_path("logo2.png", ["logo2", "comfortage", "logo_right"])
+LOGO1_URI = image_to_data_uri(LOGO1_PATH, "PNG")
+LOGO2_URI = image_to_data_uri(LOGO2_PATH, "JPEG")
 
-LOGO1_URI = image_to_data_uri(LOGO1_PATH)
-LOGO2_URI = image_to_data_uri(LOGO2_PATH)
-import hashlib
-st.write("logo1:", LOGO1_PATH, hashlib.md5(open(LOGO1_PATH,'rb').read()).hexdigest())
-st.write("logo2:", LOGO2_PATH, hashlib.md5(open(LOGO2_PATH,'rb').read()).hexdigest())
-st.image([LOGO1_PATH, LOGO2_PATH], width=150)
+
 
 # Φόρτωση των 2 λογοτύπων (π.χ. logo1.png και logo2.png στον ίδιο φάκελο)
 
