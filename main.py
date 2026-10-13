@@ -76,9 +76,12 @@ def get_image_path(default_name, alt_keywords):
 def image_to_data_uri(path, fmt="PNG"):
     if not os.path.isfile(path):
         return None
-    img = Image.open(path).convert("RGB")
+    img = Image.open(path).convert("RGBA")
+    background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    background.alpha_composite(img)
+    final = background.convert("RGB")
     buf = io.BytesIO()
-    img.save(buf, format=fmt)
+    final.save(buf, format=fmt)
     mime = "image/png" if fmt == "PNG" else "image/jpeg"
     return f"data:{mime};base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
 
