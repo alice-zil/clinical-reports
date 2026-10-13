@@ -84,6 +84,10 @@ LOGO2_PATH = get_image_path("logo2.png", ["logo2", "comfortage", "logo_right"])
 
 LOGO1_URI = image_to_data_uri(LOGO1_PATH)
 LOGO2_URI = image_to_data_uri(LOGO2_PATH)
+import hashlib
+st.write("logo1:", LOGO1_PATH, hashlib.md5(open(LOGO1_PATH,'rb').read()).hexdigest())
+st.write("logo2:", LOGO2_PATH, hashlib.md5(open(LOGO2_PATH,'rb').read()).hexdigest())
+st.image([LOGO1_PATH, LOGO2_PATH], width=150)
 
 # Φόρτωση των 2 λογοτύπων (π.χ. logo1.png και logo2.png στον ίδιο φάκελο)
 
