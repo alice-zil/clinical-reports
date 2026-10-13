@@ -61,7 +61,7 @@ else:
 # Βοηθητική συνάρτηση για να βρίσκει το xhtml2pdf τα αρχεία απευθείας χωρίς cache bug
 
 
-# Βρίσκουμε αυτόματα τα αρχεία στον φάκελο (ανεξάρτητα από πεζά/κεφαλαία στο Linux)
+
 def get_image_path(default_name, alt_keywords):
     p = os.path.join(BASE_DIR, default_name)
     if os.path.isfile(p):
@@ -81,6 +81,9 @@ def image_to_data_uri(path, fmt="PNG"):
     img.save(buf, format=fmt)
     mime = "image/png" if fmt == "PNG" else "image/jpeg"
     return f"data:{mime};base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+
+LOGO1_PATH = get_image_path("logo1.png", ["logo1", "logo_left"])
+LOGO2_PATH = get_image_path("logo2.png", ["logo2", "comfortage", "logo_right"])
 
 LOGO1_URI = image_to_data_uri(LOGO1_PATH, "PNG")
 LOGO2_URI = image_to_data_uri(LOGO2_PATH, "JPEG")
